@@ -71,44 +71,67 @@ def extract_mermaid_code(text):
 def clean_mermaid_syntax(code):
     """
     Clean up common issues in Mermaid syntax.
-    
+
     Args:
         code (str): The Mermaid code to clean
-        
+
     Returns:
         str: The cleaned Mermaid code
     """
-    # Ensure proper spacing around arrows
-    code = re.sub(r'(\w+|\]|\)|\})(-->|==>|-.->)(\w+|\[|\(|\{)', r'\1 \2 \3', code)
-    
-    # Fix missing brackets around node labels
-    def fix_node_brackets(match):
-        node_id = match.group(1)
-        if not any(c in node_id for c in '[](){}'):
-            return f'{node_id}[{node_id}]'
-        return node_id
-    code = re.sub(r'(?:^|\s)(\w+)(?:\s|$)', fix_node_brackets, code)
-    
-    # Ensure node IDs with spaces are properly quoted
-    def quote_node_labels(match):
-        label = match.group(1)
-        if ' ' in label and not label.startswith('"'):
-            return f'["{label}"]'
-        return f'[{label}]'
-    code = re.sub(r'\[(.*?)\]', quote_node_labels, code)
-    
-    # Fix parentheses in node labels
-    def fix_parentheses(match):
-        label = match.group(1)
-        if '(' in label or ')' in label:
-            return f'["{label}"]'
-        return f'[{label}]'
-    code = re.sub(r'\[(.*?)\]', fix_parentheses, code)
-    
-    # Ensure proper line endings
-    code = code.replace('\r\n', '\n').strip()
-    
-    return code
+    try:
+        # Only process if it's valid mermaid code
+        if not code.strip().startswith(('graph ', 'flowchart ', 'sequenceDiagram ')):
+            return code.strip()
+
+        # Fix only specific common issues, avoid aggressive regex
+
+        # Fix common arrow spacing issues (only if missing spaces)
+        code = re.sub(r'(\w+)-->(\w+)', r'\1 --> \2', code)
+        code = re.sub(r'(\w+)==>(\w+)', r'\1 ==> \2', code)
+
+        # Fix missing quotes for node labels with spaces (be more conservative)
+        def fix_space_labels(match):
+            full_match = match.group(0)
+            label = match.group(1)
+            if ' ' in label and not label.startswith('"') and not label.startswith("'"):
+                return f'["{label}"]'
+            return full_match
+
+        # Only apply to labels that actually contain spaces
+        code = re.sub(r'\[([^\]]*?\s[^\]]*?)\]', fix_space_labels, code)
+
+        # Fix parentheses in labels (be more specific)
+        def fix_parentheses_labels(match):
+            full_match = match.group(0)
+            label = match.group(1)
+            if ('(' in label or ')' in label) and not label.startswith('"') and not label.startswith("'"):
+                return f'["{label}"]'
+            return full_match
+
+        code = re.sub(r'\[([^\]]*?\([^)]*\)[^\]]*?)\]', fix_parentheses_labels, code)
+
+        # Clean up problematic characters only at the start/end of labels
+        def clean_label_content(match):
+            full_match = match.group(0)
+            label = match.group(1)
+            # Only clean if it's not already quoted
+            if not label.startswith('"') and not label.startswith("'"):
+                # Remove problematic characters from start/end only
+                label = label.strip()
+                label = label.lstrip('[]{}()').rstrip('[]{}()')
+                return f'[{label}]'
+            return full_match
+
+        code = re.sub(r'\[([^\]]+)\]', clean_label_content, code)
+
+        # Ensure proper line endings and remove empty lines
+        lines = [line.strip() for line in code.split('\n') if line.strip()]
+        code = '\n'.join(lines)
+
+        return code
+    except Exception as e:
+        # If cleaning fails, return the original code
+        return code.strip()
 
 def process_groq_response(response_text, model_name, expect_json=True):
     """

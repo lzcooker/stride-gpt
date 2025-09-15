@@ -8,10 +8,21 @@ from groq import Groq
 from utils import process_groq_response, create_reasoning_system_prompt, extract_mermaid_code
 import json
 from google import genai as google_genai
+from zhipuai import ZhipuAI
+from i18n import get_prompt_language_suffix
 
 # Function to create a prompt to generate an attack tree
-def create_attack_tree_prompt(app_type, authentication, internet_facing, sensitive_data, app_input):
-    prompt = f"""
+def create_attack_tree_prompt(app_type, authentication, internet_facing, sensitive_data, app_input, language="en"):
+    if language == "zh":
+        prompt = f"""
+应用程序类型：{app_type}
+身份验证方法：{authentication}
+面向互联网：{internet_facing}
+敏感数据：{sensitive_data}
+应用程序描述：{app_input}
+"""
+    else:
+        prompt = f"""
 APPLICATION TYPE: {app_type}
 AUTHENTICATION METHODS: {authentication}
 INTERNET FACING: {internet_facing}
@@ -59,11 +70,45 @@ def convert_tree_to_mermaid(tree_data):
     # Join lines with newlines
     return "\n".join(mermaid_lines)
 
-def create_json_structure_prompt():
+def create_json_structure_prompt(language="en"):
     """
     Creates a prompt for generating attack tree data in JSON format.
     """
-    return """Your task is to analyze the application and create an attack tree structure in JSON format.
+    if language == "zh":
+        return """您的任务是分析应用程序并以JSON格式创建攻击树结构。
+
+JSON结构应遵循以下格式：
+{
+    "nodes": [
+        {
+            "id": "root",
+            "label": "破坏应用程序",
+            "children": [
+                {
+                    "id": "auth",
+                    "label": "获得未授权访问",
+                    "children": [
+                        {
+                            "id": "auth1",
+                            "label": "利用OAuth2漏洞"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+规则：
+- 使用简单的ID（root, auth, auth1, data等）
+- 使标签清晰且具有描述性
+- 包含所有攻击路径和子路径
+- 保持适当的父子关系
+- 确保JSON格式正确
+
+仅响应JSON结构，不要添加额外文本。"""
+    else:
+        return """Your task is to analyze the application and create an attack tree structure in JSON format.
 
 The JSON structure should follow this format:
 {
@@ -122,11 +167,11 @@ def clean_json_response(response_text):
     return response_text.strip()
 
 # Function to get attack tree from the GPT response.
-def get_attack_tree(api_key, model_name, prompt):
+def get_attack_tree(api_key, model_name, prompt, language="en"):
     client = OpenAI(api_key=api_key)
 
     # For models that support JSON output format
-    if model_name in ["gpt-5", "gpt-5-mini", "gpt-5-nano", "o3", "o3-mini", "o4-mini"]:
+    if model_name in ["o1", "o3", "o3-mini", "o4-mini"]:
         system_prompt = create_reasoning_system_prompt(
             task_description="Create a structured attack tree by analyzing potential attack paths.",
             approach_description="""Analyze the application and create an attack tree showing potential attack paths.
@@ -171,18 +216,18 @@ ONLY RESPOND WITH THE JSON STRUCTURE, NO ADDITIONAL TEXT."""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=20000 if model_name.startswith("gpt-5") else 8192
+            max_completion_tokens=4000
         )
     else:
         # For other models, try to get JSON output without format parameter
-        system_prompt = create_json_structure_prompt()
+        system_prompt = create_json_structure_prompt(language)
         response = client.chat.completions.create(
             model=model_name,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=8192
+            max_tokens=4000
         )
 
     # Try to parse JSON response
@@ -196,7 +241,7 @@ ONLY RESPOND WITH THE JSON STRUCTURE, NO ADDITIONAL TEXT."""
         return extract_mermaid_code(response.choices[0].message.content)
 
 # Function to get attack tree from the Azure OpenAI response.
-def get_attack_tree_azure(azure_api_endpoint, azure_api_key, azure_api_version, azure_deployment_name, prompt):
+def get_attack_tree_azure(azure_api_endpoint, azure_api_key, azure_api_version, azure_deployment_name, prompt, language="en"):
     client = AzureOpenAI(
         azure_endpoint = azure_api_endpoint,
         api_key = azure_api_key,
@@ -223,7 +268,7 @@ def get_attack_tree_azure(azure_api_endpoint, azure_api_key, azure_api_version, 
         return extract_mermaid_code(response.choices[0].message.content)
 
 # Function to get attack tree from the Mistral model's response.
-def get_attack_tree_mistral(mistral_api_key, mistral_model, prompt):
+def get_attack_tree_mistral(mistral_api_key, mistral_model, prompt, language="en"):
     client = Mistral(api_key=mistral_api_key)
 
     # Try to get JSON output
@@ -246,7 +291,7 @@ def get_attack_tree_mistral(mistral_api_key, mistral_model, prompt):
         return extract_mermaid_code(response.choices[0].message.content)
 
 # Function to get attack tree from Ollama hosted LLM.
-def get_attack_tree_ollama(ollama_endpoint, ollama_model, prompt):
+def get_attack_tree_ollama(ollama_endpoint, ollama_model, prompt, language="en"):
     """
     Get attack tree from Ollama hosted LLM.
     
@@ -295,7 +340,7 @@ def get_attack_tree_ollama(ollama_endpoint, ollama_model, prompt):
         raise
 
 # Function to get attack tree from Anthropic's Claude model.
-def get_attack_tree_anthropic(anthropic_api_key, anthropic_model, prompt):
+def get_attack_tree_anthropic(anthropic_api_key, anthropic_model, prompt, language="en"):
     client = Anthropic(api_key=anthropic_api_key)
     
     # Check if we're using extended thinking mode
@@ -377,7 +422,7 @@ graph TD
         return fallback_mermaid
 
 # Function to get attack tree from LM Studio Server response.
-def get_attack_tree_lm_studio(lm_studio_endpoint, model_name, prompt):
+def get_attack_tree_lm_studio(lm_studio_endpoint, model_name, prompt, language="en"):
     client = OpenAI(
         base_url=f"{lm_studio_endpoint}/v1",
         api_key="not-needed"  # LM Studio Server doesn't require an API key
@@ -404,7 +449,7 @@ def get_attack_tree_lm_studio(lm_studio_endpoint, model_name, prompt):
         return extract_mermaid_code(response.choices[0].message.content)
 
 # Function to get attack tree from the Groq model's response.
-def get_attack_tree_groq(groq_api_key, groq_model, prompt):
+def get_attack_tree_groq(groq_api_key, groq_model, prompt, language="en"):
     client = Groq(api_key=groq_api_key)
 
     # Try to get JSON output
@@ -571,7 +616,7 @@ def create_attack_tree_schema_lm_studio():
     }
 
 # Function to get attack tree from the Google model's response.
-def get_attack_tree_google(google_api_key, google_model, prompt):
+def get_attack_tree_google(google_api_key, google_model, prompt, language="en"):
     """
     Generate an attack tree using the Gemini API (Google AI) as per official documentation:
     https://ai.google.dev/gemini-api/docs/text-generation
@@ -619,3 +664,49 @@ def get_attack_tree_google(google_api_key, google_model, prompt):
         return convert_tree_to_mermaid(tree_data)
     except (json.JSONDecodeError, AttributeError):
         return extract_mermaid_code(getattr(response, 'text', str(response)))
+
+# Function to get attack tree from GLM response
+def get_attack_tree_glm(glm_api_key, glm_model, prompt, language="en"):
+    """
+    Get attack tree from GLM (Zhipu AI) response.
+
+    Args:
+        glm_api_key (str): The GLM API key
+        glm_model (str): The GLM model name
+        prompt (str): The prompt to send to the model
+
+    Returns:
+        str: Mermaid diagram code
+    """
+    client = OpenAI(
+    api_key= glm_api_key,
+    base_url="https://open.bigmodel.cn/api/paas/v4/"
+    )
+
+    try:
+        # Use the same JSON structure prompt as other models
+        system_prompt = create_json_structure_prompt(language)
+
+        response = client.chat.completions.create(
+            model=glm_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4000,
+            response_format={"type": "json_object"}
+        )
+
+        # Parse JSON response
+        try:
+            tree_data = json.loads(response.choices[0].message.content)
+            return convert_tree_to_mermaid(tree_data)
+        except json.JSONDecodeError as e:
+            st.error(f"GLM response parsing error: {e}")
+            # If JSON parsing fails, try to extract Mermaid code directly
+            return extract_mermaid_code(response.choices[0].message.content)
+
+    except Exception as e:
+        st.error(f"Error generating attack tree with GLM: {str(e)}")
+        return "graph TD\n    A[\"Error Generating Attack Tree\"] --> B[\"Please try again or check your API key\"]"

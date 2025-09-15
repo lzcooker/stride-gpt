@@ -13,16 +13,9 @@ STRIDE GPT is an AI-powered threat modelling tool that leverages Large Language 
 - [Contributing](#contributing)
 - [License](#license)
 
-## Support the Project
+## Star the Repo
 
-If you find STRIDE GPT useful, please consider supporting the project:
-
-- ⭐ **Star the repository** on GitHub to help more people discover the tool
-- ☕ **Buy me a coffee** to support continued development and maintenance
-
-<a href="https://buymeacoffee.com/mrwadams" target="_blank">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px; width: 217px;">
-</a>
+If you find STRIDE GPT useful, please consider starring the repository on GitHub. This helps more people discover the tool. Your support is greatly appreciated! ⭐
 
 ## Features
 - Simple and user-friendly interface
@@ -32,13 +25,11 @@ If you find STRIDE GPT useful, please consider supporting the project:
 - Suggests possible mitigations for identified threats
 - Supports DREAD risk scoring for identified threats
 - Generates Gherkin test cases based on identified threats
-- GitHub repository analysis for comprehensive threat modelling (including GitHub Enterprise support)
-- Advanced reasoning model support (OpenAI GPT-5 series, Anthropic Claude 4, Mistral Magistral series)
-- Comprehensive LLM provider support: OpenAI, Azure OpenAI, Anthropic, Google AI, Mistral, Groq, plus local hosting via Ollama and LM Studio Server
+- 🆕 GitHub repository analysis for comprehensive threat modelling
 - No data storage; application details are not saved
+- Supports models accessed via OpenAI API, Azure OpenAI Service, Google AI API, Mistral API, or locally hosted models via Ollama and 🆕 LM Studio Server
 - Available as a Docker container image for easy deployment
 - Environment variable support for secure configuration
-- Downloadable outputs in Markdown format for all generated content
 
 ## Roadmap
 - [x] Add support for multi-modal threat modelling
@@ -57,22 +48,11 @@ This video is an excellent resource for anyone interested in understanding how S
 
 ## Changelog
 
-### Version 0.14 (latest)
-
-- **GPT-5 Series Support**: Added comprehensive support for OpenAI's GPT-5 series models (gpt-5, gpt-5-mini, gpt-5-nano) across all threat modeling features. These advanced reasoning models provide enhanced analytical capabilities with proper token allocation for both internal reasoning and output generation.
-- **Anthropic Claude 4 Integration**: Added support for Anthropic's latest Claude 4 models (claude-opus-4-1-20250805, claude-opus-4-20250514, and claude-sonnet-4-20250514) with enhanced capabilities.
-- **GitHub Enterprise Support**: Added support for GitHub Enterprise repositories. The tool now automatically detects and configures the appropriate API endpoint based on the repository URL, making it easy to analyze repositories hosted on private GitHub Enterprise instances. (Thanks to @danielpops for the contribution!)
-- **Enhanced Reasoning Model Integration**: Updated parameter handling to use `max_completion_tokens` instead of deprecated `max_tokens` for GPT-5 and other OpenAI reasoning models, ensuring compatibility with OpenAI's latest API requirements.
-- **Improved DREAD Assessment Display**: Removed truncation limits in DREAD assessment scenario descriptions, allowing users to view complete threat scenarios in the risk assessment table instead of abbreviated "..." versions.
-- **Security Updates**: Updated dependencies to address security vulnerabilities identified by Snyk, including updates to anyio, zipp, tornado, requests, and urllib3.
-- **Mistral Model Updates**: Added support for Mistral's latest models including Magistral Medium/Small (reasoning models), Mistral Medium, and Ministral 8B.
-- **Groq Model Updates**: Updated Groq model selection with OpenAI GPT-OSS models (120B, 20B), maintained Llama 3.3 70B and 3.1 8B, kept DeepSeek R1, and added Moonshot Kimi K2 and Qwen3 32B.
-- **Google Gemini 2.5 GA Update**: Updated to use the General Availability versions of Gemini 2.5 models (Pro, Flash, Flash Lite) replacing the previous preview versions.
-- **Support the Project**: Added a "Buy me a coffee" button in the sidebar to allow users to support the continued development and maintenance of STRIDE GPT.
-
-### Version 0.13
+### Version 0.13 (latest)
 
 - **New OpenAI Models**: Added support for OpenAI's latest models: gpt-4.1, o3, and o4-mini while maintaining support for o3-mini. These reasoning models provide detailed analytical capabilities.
+- **Anthropic Claude 4 Integration**: Added support for Anthropic's latest Claude 4 models (claude-opus-4-20250514 and claude-sonnet-4-20250514) with enhanced capabilities.
+- **Google Gemini 2.5 Integration**: Added support for Google's Gemini 2.5 Pro and Flash preview models with a 1 million token context window and enhanced reasoning capabilities.
 - **Migrated to New Google GenAI SDK**: Completely migrated to the new Google GenAI SDK, removing all dependency on the deprecated Google Generative AI library. Refactored Gemini (Google AI) model integration across all modules for improved consistency and performance.
 - **Enhanced Reasoning Model Support**: Expanded the reasoning framework to work with all of OpenAI's reasoning models (o1, o3, o3-mini, o4-mini) across all threat modeling features, including threat model generation, attack trees, mitigations, and DREAD assessments.
 - **Increased Token Limits**: Updated token limits for new models to take advantage of their expanded contexts, particularly for gpt-4.1 which supports 1 million tokens and o4-mini which supports 200K tokens.
@@ -287,3 +267,129 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
+
+  主要方法功能解读
+
+  1. 辅助函数（Helper Functions）
+
+  get_lm_studio_models(endpoint) (line 41)
+
+  - 功能：从LM Studio Server获取可用模型列表
+  - 返回：模型名称列表，失败时返回["local-model"]
+
+  get_ollama_models(ollama_endpoint) (line 64)
+
+  - 功能：从Ollama服务获取可用模型列表
+  - 参数：Ollama端点URL
+  - 返回：模型名称列表，失败时返回["local-model"]
+
+  get_input() (line 123)
+
+  - 功能：获取用户输入的应用描述和GitHub URL
+  - 功能：支持GitHub仓库分析，自动填充应用描述
+
+  estimate_tokens(text, model) (line 154)
+
+  - 功能：估算文本的token数量
+  - 实现：使用tiktoken库或字符数近似估算
+
+  analyze_github_repo(repo_url) (line 176)
+
+  - 功能：分析GitHub仓库，生成系统描述
+  - 流程：
+    a. 解析仓库URL获取owner和repo名
+    b. 获取默认分支的文件树
+    c. 优先分析README文件
+    d. 按重要性排序分析代码文件
+    e. 生成包含文件摘要的系统描述
+
+  summarize_file(file_path, content) (line 332)
+
+  - 功能：生成文件内容摘要
+  - 提取：导入语句、函数、类等关键信息
+
+  mermaid(code, height) (line 424)
+
+  - 功能：渲染Mermaid图表
+  - 实现：使用HTML组件和Mermaid.js库
+
+  load_env_variables() (line 439)
+
+  - 功能：从.env文件加载环境变量到session state
+
+  2. 回调函数（Callback Functions）
+
+  on_model_provider_change() (line 547)
+
+  - 功能：模型提供商变更时的回调
+  - 更新：token限制和选中的模型
+
+  on_model_selection_change() (line 583)
+
+  - 功能：模型选择变更时的回调
+  - 更新：根据选择的模型调整token限制
+
+  执行链路分析
+
+  从 streamlit run main.py 开始的执行流程：
+
+  1. 初始化阶段（line 1-491）
+
+  导入模块 → 加载环境变量 → 定义模型token限制 → 设置页面配置
+
+  2. 侧边栏构建（line 608-1001）
+
+  显示logo → 模型提供商选择 → API密钥输入 → 高级设置 → 关于信息
+
+  3. 主界面构建（line 1003-1594）
+
+  创建5个标签页：
+  - Threat Model (line 1007-1230)
+  - Attack Tree (line 1235-1329)
+  - Mitigations (line 1333-1415)
+  - DREAD (line 1417-1507)
+  - Test Cases (line 1511-1594)
+
+  典型用户交互流程：
+
+  1. 威胁模型生成流程（Threat Model Tab）
+
+  用户输入应用描述 → 选择应用类型/敏感数据/认证方式 →
+  点击"Generate Threat Model" →
+  调用create_threat_model_prompt() →
+  根据模型提供商调用相应的get_threat_model_*() →
+  转换为markdown显示 → 保存到session_state
+
+  2. 攻击树生成流程（Attack Tree Tab）
+
+  检查是否已有威胁模型 →
+  调用create_attack_tree_prompt() →
+  生成Mermaid代码 →
+  显示代码和图表预览
+
+  3. 缓解措施生成流程（Mitigations Tab）
+
+  检查session_state中的threat_model →
+  转换为markdown →
+  调用create_mitigations_prompt() →
+  生成缓解措施建议
+
+  4. DREAD评估流程（DREAD Tab）
+
+  基于威胁模型生成DREAD评估 →
+  计算风险评分 →
+  显示评估结果
+
+  5. 测试用例生成流程（Test Cases Tab）
+
+  基于威胁模型生成Gherkin语法测试用例 →
+  提供下载功能
+
+  关键设计特点：
+
+  1. 多模型支持：支持OpenAI、Anthropic、Azure、Google、Mistral、Groq、Ollama、LM Studio
+  2. 状态管理：使用streamlit的session_state保持用户数据和生成结果
+  3. 错误处理：包含重试机制和用户友好的错误提示
+  4. GitHub集成：可分析GitHub仓库自动生成应用描述
+  5. 图像分析：支持上传架构图进行分析
+  6. 导出功能：所有结果都支持markdown格式下载

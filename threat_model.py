@@ -2,43 +2,104 @@ import json
 import requests
 import base64
 from anthropic import Anthropic
-from mistralai import Mistral
+from mistralai import Mistral, UserMessage
 from openai import OpenAI, AzureOpenAI
 import streamlit as st
 import re
 
-from google import genai as google_genai 
+from google import genai as google_genai
 from groq import Groq
+from zhipuai import ZhipuAI
 from utils import process_groq_response, create_reasoning_system_prompt
+from i18n import get_prompt_language_suffix
 
-# Function to convert JSON to Markdown for display.    
+# Function to convert JSON to Markdown for display.
 def json_to_markdown(threat_model, improvement_suggestions):
     markdown_output = "## Threat Model\n\n"
-    
+
     # Start the markdown table with headers
     markdown_output += "| Threat Type | Scenario | Potential Impact |\n"
     markdown_output += "|-------------|----------|------------------|\n"
-    
+
     # Fill the table rows with the threat model data
     for threat in threat_model:
-        markdown_output += f"| {threat['Threat Type']} | {threat['Scenario']} | {threat['Potential Impact']} |\n"
-    
-    markdown_output += "\n\n## Improvement Suggestions\n\n"
+        # Handle different field name variations that models might return
+        threat_type = threat.get('Threat Type') or threat.get('threat_type') or threat.get('threatType') or threat.get('type') or 'Unknown'
+        scenario = threat.get('Scenario') or threat.get('scenario') or threat.get('description') or 'Unknown scenario'
+        potential_impact = threat.get('Potential Impact') or threat.get('potential_impact') or threat.get('impact') or threat.get('effect') or 'Unknown impact'
+
+        markdown_output += f"| {threat_type} | {scenario} | {potential_impact} |\n"
+
+    markdown_output += "\n\n## " + get_text("improvement_suggestions", language) + "\n\n"
     for suggestion in improvement_suggestions:
         markdown_output += f"- {suggestion}\n"
-    
+
     return markdown_output
 
 # Function to create a prompt for generating a threat model
-def create_threat_model_prompt(app_type, authentication, internet_facing, sensitive_data, app_input):
-    prompt = f"""
+def create_threat_model_prompt(app_type, authentication, internet_facing, sensitive_data, app_input, language="en"):
+    language_suffix = get_prompt_language_suffix(language)
+
+    if language == "zh":
+        prompt = f"""
+作为一名拥有超过20年STRIDE威胁建模方法经验的网络安全专家，您的任务是为各种应用程序生成全面的威胁模型。请分析提供的代码摘要、README内容和应用程序描述，为该应用程序生成具体的威胁列表。
+
+请特别注意README内容，因为它通常提供有关项目目的、架构和潜在安全考虑的宝贵上下文。
+
+对于每个STRIDE类别（欺骗、篡改、否认、信息泄露、拒绝服务和权限提升），如果适用，请列出多个（3或4个）可信威胁。每个威胁场景应提供一个在应用程序上下文中可能发生威胁的可信场景。您的响应必须根据给定的详细信息进行调整。
+
+提供威胁模型时，使用JSON格式的响应，键为"threat_model"和"improvement_suggestions"。在"threat_model"下，包含一个对象数组，键为"Threat Type"、"Scenario"和"Potential Impact"。
+
+在"improvement_suggestions"下，包含一个字符串数组，建议用户可以提供哪些额外信息或详细信息，以使威胁模型在下一迭代中更加全面和准确。专注于识别提供的应用程序描述中的空白，如果填补这些空白，将能够进行更详细和精确的威胁分析。例如：
+- 缺失架构细节，这将有助于识别更具体的威胁
+- 不明确的身份验证流程，需要更多细节
+- 不完整的数据流描述
+- 缺失技术栈信息
+- 不明确的系统边界或信任区域
+- 敏感数据处理的描述不完整
+
+不要提供一般的安全建议 - 专注于什么额外信息有助于创建更好的威胁模型。
+
+应用程序类型：{app_type}
+身份验证方法：{authentication}
+面向互联网：{internet_facing}
+敏感数据：{sensitive_data}
+代码摘要、README内容和应用程序描述：
+{app_input}
+
+预期JSON响应格式示例：
+
+    {{
+      "threat_model": [
+        {{
+          "Threat Type": "欺骗",
+          "Scenario": "示例场景1",
+          "Potential Impact": "示例潜在影响1"
+        }},
+        {{
+          "Threat Type": "欺骗",
+          "Scenario": "示例场景2",
+          "Potential Impact": "示例潜在影响2"
+        }},
+        // ... 更多威胁
+      ],
+      "improvement_suggestions": [
+        "请提供有关组件间身份验证流程的更多详细信息，以更好地分析潜在的身份验证绕过场景。",
+        "考虑添加有关敏感数据如何存储和传输的信息，以实现更精确的数据暴露威胁分析。",
+        // ... 更多改进威胁模型输入的建议
+      ]
+    }}
+{language_suffix}
+"""
+    else:
+        prompt = f"""
 Act as a cyber security expert with more than 20 years experience of using the STRIDE threat modelling methodology to produce comprehensive threat models for a wide range of applications. Your task is to analyze the provided code summary, README content, and application description to produce a list of specific threats for the application.
 
 Pay special attention to the README content as it often provides valuable context about the project's purpose, architecture, and potential security considerations.
 
 For each of the STRIDE categories (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, and Elevation of Privilege), list multiple (3 or 4) credible threats if applicable. Each threat scenario should provide a credible scenario in which the threat could occur in the context of the application. It is very important that your responses are tailored to reflect the details you are given.
 
-When providing the threat model, use a JSON formatted response with the keys "threat_model" and "improvement_suggestions". Under "threat_model", include an array of objects with the keys "Threat Type", "Scenario", and "Potential Impact". 
+When providing the threat model, use a JSON formatted response with the keys "threat_model" and "improvement_suggestions". Under "threat_model", include an array of objects with the keys "Threat Type", "Scenario", and "Potential Impact".
 
 Under "improvement_suggestions", include an array of strings that suggest what additional information or details the user could provide to make the threat model more comprehensive and accurate in the next iteration. Focus on identifying gaps in the provided application description that, if filled, would enable a more detailed and precise threat analysis. For example:
 - Missing architectural details that would help identify more specific threats
@@ -58,7 +119,7 @@ CODE SUMMARY, README CONTENT, AND APPLICATION DESCRIPTION:
 {app_input}
 
 Example of expected JSON response format:
-  
+
     {{
       "threat_model": [
         {{
@@ -79,6 +140,7 @@ Example of expected JSON response format:
         // ... more suggestions for improving the threat model input
       ]
     }}
+{language_suffix}
 """
     return prompt
 
@@ -125,8 +187,8 @@ def get_image_analysis(api_key, model_name, prompt, base64_image):
         }
     ]
     
-    # If using reasoning models, use the structured system prompt approach
-    if model_name in ["gpt-5", "gpt-5-mini", "gpt-5-nano", "o3", "o3-mini", "o4-mini"]:
+    # If using o4-mini, use the structured system prompt approach
+    if model_name == "o4-mini":
         system_prompt = create_reasoning_system_prompt(
             task_description="Analyze the provided architecture diagram and explain it to a Security Architect.",
             approach_description="""1. Carefully examine the diagram
@@ -144,11 +206,10 @@ def get_image_analysis(api_key, model_name, prompt, base64_image):
         
         # Create completion with max_completion_tokens for reasoning models
         try:
-            max_tokens = 20000 if model_name.startswith("gpt-5") else 8192
             response = client.chat.completions.create(
                 model=model_name,
                 messages=messages,
-                max_completion_tokens=max_tokens
+                max_completion_tokens=4000
             )
             return {
                 "choices": [
@@ -158,12 +219,12 @@ def get_image_analysis(api_key, model_name, prompt, base64_image):
         except Exception as e:
             return None
     else:
-        # For standard models (gpt-4o, etc.)
+        # For standard models (gpt-4, etc.)
         try:
             response = client.chat.completions.create(
                 model=model_name,
                 messages=messages,
-                max_tokens=8192
+                max_tokens=4000
             )
             return {
                 "choices": [
@@ -253,8 +314,8 @@ def get_image_analysis_anthropic(api_key, model_name, prompt, base64_image, medi
 def get_threat_model(api_key, model_name, prompt):
     client = OpenAI(api_key=api_key)
 
-    # For reasoning models (o1, o3, o3-mini, o4-mini) and GPT-5 series models, use a structured system prompt
-    if model_name in ["gpt-5", "gpt-5-mini", "gpt-5-nano", "o3", "o3-mini", "o4-mini"]:
+    # For reasoning models (o1, o3, o3-mini, o4-mini), use a structured system prompt
+    if model_name in ["o1", "o3", "o3-mini", "o4-mini"]:
         system_prompt = create_reasoning_system_prompt(
             task_description="Analyze the provided application description and generate a comprehensive threat model using the STRIDE methodology.",
             approach_description="""1. Carefully read and understand the application description
@@ -272,8 +333,6 @@ def get_threat_model(api_key, model_name, prompt):
 5. Format the output as a JSON object with 'threat_model' and 'improvement_suggestions' arrays"""
         )
         # Create completion with max_completion_tokens for reasoning models
-        # GPT-5 models need more tokens for reasoning + output
-        max_tokens = 20000 if model_name.startswith("gpt-5") else 8192
         response = client.chat.completions.create(
             model=model_name,
             response_format={"type": "json_object"},
@@ -281,7 +340,7 @@ def get_threat_model(api_key, model_name, prompt):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=max_tokens
+            max_completion_tokens=4000
         )
     else:
         system_prompt = "You are a helpful assistant designed to output JSON."
@@ -293,16 +352,11 @@ def get_threat_model(api_key, model_name, prompt):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=8192
+            max_tokens=4000
         )
 
     # Convert the JSON string in the 'content' field to a Python dictionary
-    content = response.choices[0].message.content
-    
-    if not content:
-        raise ValueError(f"Empty response from model {model_name}. This may indicate the model is not available or has rate limits.")
-    
-    response_content = json.loads(content)
+    response_content = json.loads(response.choices[0].message.content)
 
     return response_content
 
@@ -412,7 +466,7 @@ def get_threat_model_mistral(mistral_api_key, mistral_model, prompt):
         model = mistral_model,
         response_format={"type": "json_object"},
         messages=[
-            {"role": "user", "content": prompt}
+            UserMessage(content=prompt)
         ]
     )
 
@@ -668,3 +722,136 @@ def get_threat_model_groq(groq_api_key, groq_model, prompt):
             st.write(reasoning)
 
     return response_content
+
+# Function to get threat model from GLM response.
+def get_threat_model_glm(glm_api_key, glm_model, prompt):
+    """
+    Get threat model from GLM (Zhipu AI) response.
+
+    Args:
+        glm_api_key (str): The GLM API key
+        glm_model (str): The GLM model name (e.g., 'glm-4.5', 'glm-4.5-air')
+        prompt (str): The prompt to send to the model
+
+    Returns:
+        dict: The parsed JSON response from the model
+    """
+    client = OpenAI(
+    api_key= glm_api_key,
+    base_url="https://open.bigmodel.cn/api/paas/v4/"
+    )
+    
+
+    try:
+        response = client.chat.completions.create(
+            model=glm_model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant designed to output JSON. Your response must be a valid, parseable JSON object with no additional text, markdown formatting, or explanation."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4000,
+            response_format={"type": "json_object"}
+        )
+
+        # Parse the JSON response
+        response_content = json.loads(response.choices[0].message.content)
+        return response_content
+
+    except json.JSONDecodeError as e:
+        # Handle JSON parsing errors
+        st.error(f"Failed to parse JSON response from GLM: {str(e)}")
+
+        # Create a fallback response
+        fallback_response = {
+            "threat_model": [
+                {
+                    "Threat Type": "Error",
+                    "Scenario": "Failed to parse GLM response",
+                    "Potential Impact": "Unable to generate threat model"
+                }
+            ],
+            "improvement_suggestions": [
+                "Try again - sometimes the model returns a properly formatted response on subsequent attempts",
+                "Check if the model supports JSON output format",
+                "Consider simplifying the input prompt"
+            ]
+        }
+        return fallback_response
+
+    except Exception as e:
+        # Handle API errors
+        error_message = str(e)
+        st.error(f"Error with GLM API: {error_message}")
+
+        # Create a fallback response for API errors
+        fallback_response = {
+            "threat_model": [
+                {
+                    "Threat Type": "Error",
+                    "Scenario": f"API Error: {error_message}",
+                    "Potential Impact": "Unable to generate threat model"
+                }
+            ],
+            "improvement_suggestions": [
+                "Check your API key and model name",
+                "Verify the GLM API service is available",
+                "Consider using a different model if the issue persists"
+            ]
+        }
+        return fallback_response
+
+# Function to get image analysis using GLM models
+def get_image_analysis_glm(glm_api_key, glm_model, prompt, base64_image, media_type="image/jpeg"):
+    """
+    Get image analysis using GLM (Zhipu AI) models.
+
+    Args:
+        glm_api_key (str): The GLM API key
+        glm_model (str): The GLM model name
+        prompt (str): The prompt for image analysis
+        base64_image (str): Base64 encoded image data
+        media_type (str): Media type of the image (default: "image/jpeg")
+
+    Returns:
+        dict: Response with the analysis content
+    """
+    client = OpenAI(
+    api_key= glm_api_key,
+    base_url="https://open.bigmodel.cn/api/paas/v4/"
+    )
+
+    try:
+        # Prepare the message with image
+        response = client.chat.completions.create(
+            model=glm_model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{media_type};base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=4000
+        )
+
+        return {
+            "choices": [
+                {"message": {"content": response.choices[0].message.content}}
+            ]
+        }
+
+    except Exception as e:
+        error_message = str(e)
+        st.error(f"Error with GLM image analysis: {error_message}")
+        return None

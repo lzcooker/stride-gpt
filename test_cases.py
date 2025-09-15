@@ -6,14 +6,39 @@ import streamlit as st
 
 from google import genai as google_genai
 from groq import Groq
+from zhipuai import ZhipuAI
 from utils import process_groq_response, create_reasoning_system_prompt
+from i18n import get_prompt_language_suffix
 
 # Function to create a prompt to generate mitigating controls
-def create_test_cases_prompt(threats):
-    prompt = f"""
-Act as a cyber security expert with more than 20 years experience of using the STRIDE threat modelling methodology. 
-Your task is to provide Gherkin test cases for the threats identified in a threat model. It is very important that 
-your responses are tailored to reflect the details of the threats. 
+def create_test_cases_prompt(threats, language="en"):
+    language_suffix = get_prompt_language_suffix(language)
+
+    if language == "zh":
+        prompt = f"""
+作为一名拥有超过20年STRIDE威胁建模方法经验的网络安全专家，您的任务是为威胁模型中识别的威胁提供Gherkin测试用例。您的响应必须根据威胁的详细信息进行调整。
+
+以下是识别出的威胁列表：
+{threats}
+
+在'Given'步骤中使用威胁描述，使测试用例特定于识别的威胁。
+将Gherkin语法放在三重反引号（```）内，以在Markdown中格式化测试用例。为每个测试用例添加标题。
+例如：
+
+    ```gherkin
+    Given 一个拥有有效账户的用户
+    When 用户登录
+    Then 用户应该能够访问系统
+    ```
+
+您的响应（不要添加介绍性文本，只提供Gherkin测试用例）：
+{language_suffix}
+"""
+    else:
+        prompt = f"""
+Act as a cyber security expert with more than 20 years experience of using the STRIDE threat modelling methodology.
+Your task is to provide Gherkin test cases for the threats identified in a threat model. It is very important that
+your responses are tailored to reflect the details of the threats.
 
 Below is the list of identified threats:
 {threats}
@@ -29,16 +54,17 @@ For example:
     ```
 
 YOUR RESPONSE (do not add introductory text, just provide the Gherkin test cases):
+{language_suffix}
 """
     return prompt
 
 
 # Function to get test cases from the GPT response.
-def get_test_cases(api_key, model_name, prompt):
+def get_test_cases(api_key, model_name, prompt, language="en"):
     client = OpenAI(api_key=api_key)
 
-    # For reasoning models (o1, o3, o3-mini, o4-mini) and GPT-5 series models, use a structured system prompt
-    if model_name in ["gpt-5", "gpt-5-mini", "gpt-5-nano", "o3", "o3-mini", "o4-mini"]:
+    # For reasoning models (o1, o3, o3-mini, o4-mini), use a structured system prompt
+    if model_name in ["o1", "o3", "o3-mini", "o4-mini"]:
         system_prompt = create_reasoning_system_prompt(
             task_description="Generate comprehensive security test cases in Gherkin format for the identified threats.",
             approach_description="""1. Analyze each threat in the provided threat model:
@@ -67,7 +93,7 @@ def get_test_cases(api_key, model_name, prompt):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=20000 if model_name.startswith("gpt-5") else 8192
+            max_completion_tokens=4000
         )
     else:
         system_prompt = "You are a helpful assistant that provides Gherkin test cases in Markdown format."
@@ -78,7 +104,7 @@ def get_test_cases(api_key, model_name, prompt):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=8192
+            max_tokens=4000
         )
 
     # Access the content directly as the response will be in text format
@@ -87,7 +113,7 @@ def get_test_cases(api_key, model_name, prompt):
     return test_cases
 
 # Function to get mitigations from the Azure OpenAI response.
-def get_test_cases_azure(azure_api_endpoint, azure_api_key, azure_api_version, azure_deployment_name, prompt):
+def get_test_cases_azure(azure_api_endpoint, azure_api_key, azure_api_version, azure_deployment_name, prompt, language="en"):
     client = AzureOpenAI(
         azure_endpoint = azure_api_endpoint,
         api_key = azure_api_key,
@@ -108,7 +134,7 @@ def get_test_cases_azure(azure_api_endpoint, azure_api_key, azure_api_version, a
     return test_cases
 
 # Function to get test cases from the Google model's response.
-def get_test_cases_google(google_api_key, google_model, prompt):
+def get_test_cases_google(google_api_key, google_model, prompt, language="en"):
     client = google_genai.Client(api_key=google_api_key)
     
     safety_settings = [
@@ -176,7 +202,7 @@ Please try again or select a different model provider.
     return test_cases
 
 # Function to get test cases from the Mistral model's response.
-def get_test_cases_mistral(mistral_api_key, mistral_model, prompt):
+def get_test_cases_mistral(mistral_api_key, mistral_model, prompt, language="en"):
     client = Mistral(api_key=mistral_api_key)
 
     response = client.chat.complete(
@@ -193,7 +219,7 @@ def get_test_cases_mistral(mistral_api_key, mistral_model, prompt):
     return test_cases
 
 # Function to get test cases from Ollama hosted LLM.
-def get_test_cases_ollama(ollama_endpoint, ollama_model, prompt):
+def get_test_cases_ollama(ollama_endpoint, ollama_model, prompt, language="en"):
     """
     Get test cases from Ollama hosted LLM.
     
@@ -255,7 +281,7 @@ Please provide your response in markdown format with appropriate headings and bu
         raise
 
 # Function to get test cases from the Anthropic model's response.
-def get_test_cases_anthropic(anthropic_api_key, anthropic_model, prompt):
+def get_test_cases_anthropic(anthropic_api_key, anthropic_model, prompt, language="en"):
     client = Anthropic(api_key=anthropic_api_key)
     
     # Check if we're using extended thinking mode
@@ -324,7 +350,7 @@ def get_test_cases_anthropic(anthropic_api_key, anthropic_model, prompt):
         return fallback_test_cases
 
 # Function to get test cases from LM Studio Server response.
-def get_test_cases_lm_studio(lm_studio_endpoint, model_name, prompt):
+def get_test_cases_lm_studio(lm_studio_endpoint, model_name, prompt, language="en"):
     client = OpenAI(
         base_url=f"{lm_studio_endpoint}/v1",
         api_key="not-needed"  # LM Studio Server doesn't require an API key
@@ -344,7 +370,7 @@ def get_test_cases_lm_studio(lm_studio_endpoint, model_name, prompt):
     return test_cases
 
 # Function to get test cases from the Groq model's response.
-def get_test_cases_groq(groq_api_key, groq_model, prompt):
+def get_test_cases_groq(groq_api_key, groq_model, prompt, language="en"):
     client = Groq(api_key=groq_api_key)
     response = client.chat.completions.create(
         model=groq_model,
@@ -367,3 +393,38 @@ def get_test_cases_groq(groq_api_key, groq_model, prompt):
             st.write(reasoning)
 
     return test_cases
+
+# Function to get test cases from GLM response
+def get_test_cases_glm(glm_api_key, glm_model, prompt, language="en"):
+    """
+    Get test cases from GLM (Zhipu AI) response.
+
+    Args:
+        glm_api_key (str): The GLM API key
+        glm_model (str): The GLM model name
+        prompt (str): The prompt to send to the model
+
+    Returns:
+        str: Markdown formatted test cases
+    """
+    client = OpenAI(
+    api_key= glm_api_key,
+    base_url="https://open.bigmodel.cn/api/paas/v4/"
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=glm_model,
+            messages=[
+                {"role": "system", "content": "You are a cybersecurity expert with extensive experience in security testing and threat modeling. Generate detailed Gherkin test cases for security testing."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4000
+        )
+
+        return response.choices[0].message.content
+
+    except Exception as e:
+        st.error(f"Error generating test cases with GLM: {str(e)}")
+        return "Error generating test cases. Please check your API key and try again."

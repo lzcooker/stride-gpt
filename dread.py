@@ -3,17 +3,19 @@ import requests
 import time
 import re
 from anthropic import Anthropic
-from mistralai import Mistral
+from mistralai import Mistral, UserMessage
 from openai import OpenAI, AzureOpenAI
 import streamlit as st
 
 from google import genai as google_genai
 from groq import Groq
+from zhipuai import ZhipuAI
 from utils import process_groq_response, create_reasoning_system_prompt
+from i18n import get_prompt_language_suffix, get_text
 
-def dread_json_to_markdown(dread_assessment):
-    # Create a clean Markdown table with proper spacing
-    markdown_output = "| Threat Type | Scenario | Damage Potential | Reproducibility | Exploitability | Affected Users | Discoverability | Risk Score |\n"
+def dread_json_to_markdown(dread_assessment, language="en"):
+    # Create a clean Markdown table with proper spacing using i18n
+    markdown_output = f"| Threat Type | Scenario | {get_text('dread_damage_potential', language)} | {get_text('dread_reproducibility', language)} | {get_text('dread_exploitability', language)} | {get_text('dread_affected_users', language)} | {get_text('dread_discoverability', language)} | Risk Score |\n"
     markdown_output += "|------------|----------|------------------|-----------------|----------------|----------------|-----------------|------------|\n"
     
     try:
@@ -44,7 +46,9 @@ def dread_json_to_markdown(dread_assessment):
                 threat_type = str(threat_type).replace('|', '\\|')
                 scenario = str(scenario).replace('|', '\\|')
                 
-                # Ensure scenario text doesn't break table formatting by removing newlines
+                # Ensure scenario text doesn't break table formatting by limiting length and removing newlines
+                if len(scenario) > 100:
+                    scenario = scenario[:97] + "..."
                 scenario = scenario.replace('\n', ' ').replace('\r', '')
                 
                 # Add the row to the table with proper formatting
@@ -62,8 +66,54 @@ def dread_json_to_markdown(dread_assessment):
 
 
 # Function to create a prompt to generate mitigating controls
-def create_dread_assessment_prompt(threats):
-    prompt = f"""
+def create_dread_assessment_prompt(threats, language="en"):
+    language_suffix = get_prompt_language_suffix(language)
+
+    if language == "zh":
+        prompt = f"""
+作为一名拥有超过20年STRIDE和DREAD威胁建模方法经验的网络安全专家，您的任务是为威胁模型中识别的威胁生成DREAD风险评估。
+
+以下是识别出的威胁列表：
+{threats}
+提供风险评估时，使用JSON格式的响应，顶层键为"Risk Assessment"，威胁列表中的每个威胁都有以下子键：
+- "Threat Type": 表示威胁类型的字符串（例如，"欺骗"）。
+- "Scenario": 描述威胁场景的字符串。
+- "Damage Potential": 1到10之间的整数。
+- "Reproducibility": 1到10之间的整数。
+- "Exploitability": 1到10之间的整数。
+- "Affected Users": 1到10之间的整数。
+- "Discoverability": 1到10之间的整数。
+根据DREAD方法为每个子键分配1到10之间的值。使用以下比例：
+- 1-3：低
+- 4-6：中
+- 7-10：高
+确保JSON响应格式正确，不包含任何额外文本。以下是预期的JSON响应格式示例：
+{{
+  "Risk Assessment": [
+    {{
+      "Threat Type": "欺骗",
+      "Scenario": "攻击者可以创建虚假的OAuth2提供者并诱骗用户通过它登录。",
+      "Damage Potential": 8,
+      "Reproducibility": 6,
+      "Exploitability": 5,
+      "Affected Users": 9,
+      "Discoverability": 7
+    }},
+    {{
+      "Threat Type": "欺骗",
+      "Scenario": "攻击者可以通过中间人（MitM）攻击拦截OAuth2令牌交换过程。",
+      "Damage Potential": 8,
+      "Reproducibility": 7,
+      "Exploitability": 6,
+      "Affected Users": 8,
+      "Discoverability": 6
+    }}
+  ]
+}}
+{language_suffix}
+"""
+    else:
+        prompt = f"""
 Act as a cyber security expert with more than 20 years of experience in threat modeling using STRIDE and DREAD methodologies.
 Your task is to produce a DREAD risk assessment for the threats identified in a threat model.
 Below is the list of identified threats:
@@ -103,6 +153,7 @@ Ensure the JSON response is correctly formatted and does not contain any additio
     }}
   ]
 }}
+{language_suffix}
 """
     return prompt
 
@@ -121,11 +172,11 @@ def clean_json_response(response_text):
     # If no code blocks, return the original text
     return response_text.strip()
 
-def get_dread_assessment(api_key, model_name, prompt):
+def get_dread_assessment(api_key, model_name, prompt, language="en"):
     client = OpenAI(api_key=api_key)
 
-    # For reasoning models (o1, o3, o3-mini, o4-mini) and GPT-5 series models, use a structured system prompt
-    if model_name in ["gpt-5", "gpt-5-mini", "gpt-5-nano", "o3", "o3-mini", "o4-mini"]:
+    # For reasoning models (o1, o3, o3-mini, o4-mini), use a structured system prompt
+    if model_name in ["o1", "o3", "o3-mini", "o4-mini"]:
         system_prompt = create_reasoning_system_prompt(
             task_description="Perform a DREAD risk assessment for the identified security threats.",
             approach_description="""1. For each threat in the provided threat model:
@@ -171,7 +222,7 @@ def get_dread_assessment(api_key, model_name, prompt):
     
     return dread_assessment
 
-def get_dread_assessment_azure(azure_api_endpoint, azure_api_key, azure_api_version, azure_deployment_name, prompt):
+def get_dread_assessment_azure(azure_api_endpoint, azure_api_key, azure_api_version, azure_deployment_name, prompt, language="en"):
     client = AzureOpenAI(
         azure_endpoint = azure_api_endpoint,
         api_key = azure_api_key,
@@ -197,7 +248,7 @@ def get_dread_assessment_azure(azure_api_endpoint, azure_api_key, azure_api_vers
     return dread_assessment
 
 # Function to get DREAD risk assessment from the Google model's response.
-def get_dread_assessment_google(google_api_key, google_model, prompt):
+def get_dread_assessment_google(google_api_key, google_model, prompt, language="en"):
     """
     Generate a DREAD risk assessment using the Gemini API (Google AI) as per official documentation:
     https://ai.google.dev/gemini-api/docs/text-generation
@@ -251,14 +302,14 @@ def get_dread_assessment_google(google_api_key, google_model, prompt):
         return {}
 
 # Function to get DREAD risk assessment from the Mistral model's response.
-def get_dread_assessment_mistral(mistral_api_key, mistral_model, prompt):
+def get_dread_assessment_mistral(mistral_api_key, mistral_model, prompt, language="en"):
     client = Mistral(api_key=mistral_api_key)
 
     response = client.chat.complete(
         model=mistral_model,
         response_format={"type": "json_object"},
         messages=[
-            {"role": "user", "content": prompt}
+            UserMessage(content=prompt)
         ]
     )
 
@@ -271,7 +322,7 @@ def get_dread_assessment_mistral(mistral_api_key, mistral_model, prompt):
     return dread_assessment
 
 # Function to get DREAD risk assessment from Ollama hosted LLM.
-def get_dread_assessment_ollama(ollama_endpoint, ollama_model, prompt):
+def get_dread_assessment_ollama(ollama_endpoint, ollama_model, prompt, language="en"):
     """
     Get DREAD risk assessment from Ollama hosted LLM.
     
@@ -351,7 +402,7 @@ Please provide your response in JSON format with the following structure:
             continue
 
 # Function to get DREAD risk assessment from the Anthropic model's response.
-def get_dread_assessment_anthropic(anthropic_api_key, anthropic_model, prompt):
+def get_dread_assessment_anthropic(anthropic_api_key, anthropic_model, prompt, language="en"):
     client = Anthropic(api_key=anthropic_api_key)
     
     # Check if we're using extended thinking mode
@@ -457,7 +508,7 @@ def get_dread_assessment_anthropic(anthropic_api_key, anthropic_model, prompt):
         return fallback_assessment
 
 # Function to get DREAD risk assessment from LM Studio Server response.
-def get_dread_assessment_lm_studio(lm_studio_endpoint, model_name, prompt):
+def get_dread_assessment_lm_studio(lm_studio_endpoint, model_name, prompt, language="en"):
     client = OpenAI(
         base_url=f"{lm_studio_endpoint}/v1",
         api_key="not-needed"  # LM Studio Server doesn't require an API key
@@ -512,7 +563,7 @@ def get_dread_assessment_lm_studio(lm_studio_endpoint, model_name, prompt):
     return dread_assessment
 
 # Function to get DREAD risk assessment from the Groq model's response.
-def get_dread_assessment_groq(groq_api_key, groq_model, prompt):
+def get_dread_assessment_groq(groq_api_key, groq_model, prompt, language="en"):
     client = Groq(api_key=groq_api_key)
     response = client.chat.completions.create(
         model=groq_model,
@@ -536,3 +587,46 @@ def get_dread_assessment_groq(groq_api_key, groq_model, prompt):
             st.write(reasoning)
 
     return dread_assessment
+
+# Function to get DREAD assessment from GLM response
+def get_dread_assessment_glm(glm_api_key, glm_model, prompt, language="en"):
+    """
+    Get DREAD assessment from GLM (Zhipu AI) response.
+
+    Args:
+        glm_api_key (str): The GLM API key
+        glm_model (str): The GLM model name
+        prompt (str): The prompt to send to the model
+
+    Returns:
+        dict: DREAD assessment data
+    """
+    client = OpenAI(
+    api_key= glm_api_key,
+    base_url="https://open.bigmodel.cn/api/paas/v4/"
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=glm_model,
+            messages=[
+                {"role": "system", "content": "You are a cybersecurity expert specializing in risk assessment. Generate a DREAD risk assessment in valid JSON format."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4000,
+            response_format={"type": "json_object"}
+        )
+
+        # Parse the JSON response
+        dread_assessment = json.loads(response.choices[0].message.content)
+        return dread_assessment
+
+    except json.JSONDecodeError:
+        # Handle JSON parsing errors
+        st.error("Failed to parse JSON response from GLM")
+        return {"Risk Assessment": []}
+
+    except Exception as e:
+        st.error(f"Error generating DREAD assessment with GLM: {str(e)}")
+        return {"Risk Assessment": []}
