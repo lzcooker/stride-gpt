@@ -630,3 +630,61 @@ def get_dread_assessment_glm(glm_api_key, glm_model, prompt, language="en"):
     except Exception as e:
         st.error(f"Error generating DREAD assessment with GLM: {str(e)}")
         return {"Risk Assessment": []}
+
+# Function to get DREAD assessment from eCloud response
+def get_dread_assessment_ecloud(ecloud_api_key, ecloud_model, prompt, language="en"):
+    """
+    Get DREAD assessment from eCloud response.
+
+    Args:
+        ecloud_api_key (str): The eCloud API key
+        ecloud_model (str): The eCloud model name
+        prompt (str): The prompt to send to the model
+
+    Returns:
+        dict: DREAD assessment data
+    """
+    import requests
+
+    url = "https://zhenze-huhehaote.cmecloud.cn/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {ecloud_api_key}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": ecloud_model,
+        "messages": [
+            {"role": "system", "content": "You are a cybersecurity expert specializing in risk assessment. Generate a DREAD risk assessment in valid JSON format."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 4000,
+        "stream": False,
+        "chat_template_kwargs": {
+            "enable_thinking": False
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=60)
+        response.raise_for_status()
+
+        result = response.json()
+
+        # Parse the JSON response
+        dread_assessment = json.loads(result['choices'][0]['message']['content'])
+        return dread_assessment
+
+    except (json.JSONDecodeError, KeyError) as e:
+        # Handle JSON parsing errors
+        st.error(f"Failed to parse JSON response from eCloud: {str(e)}")
+        return {"Risk Assessment": []}
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error generating DREAD assessment with eCloud: {str(e)}")
+        return {"Risk Assessment": []}
+    except Exception as e:
+        st.error(f"Unexpected error with eCloud: {str(e)}")
+        return {"Risk Assessment": []}

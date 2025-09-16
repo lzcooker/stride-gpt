@@ -11,10 +11,10 @@ from google import genai as google_genai
 from groq import Groq
 from zhipuai import ZhipuAI
 from utils import process_groq_response, create_reasoning_system_prompt
-from i18n import get_prompt_language_suffix
+from i18n import get_prompt_language_suffix, get_text
 
 # Function to convert JSON to Markdown for display.
-def json_to_markdown(threat_model, improvement_suggestions):
+def json_to_markdown(threat_model, improvement_suggestions, language="en"):
     markdown_output = "## Threat Model\n\n"
 
     # Start the markdown table with headers
@@ -855,3 +855,95 @@ def get_image_analysis_glm(glm_api_key, glm_model, prompt, base64_image, media_t
         error_message = str(e)
         st.error(f"Error with GLM image analysis: {error_message}")
         return None
+
+# Function to get threat model from eCloud response.
+def get_threat_model_ecloud(ecloud_api_key, ecloud_model, prompt):
+    """
+    Get threat model from eCloud response.
+
+    Args:
+        ecloud_api_key (str): The eCloud API key
+        ecloud_model (str): The eCloud model name (e.g., 'deepseek-v3')
+        prompt (str): The prompt to send to the model
+
+    Returns:
+        dict: The parsed JSON response from the model
+    """
+    url = "https://zhenze-huhehaote.cmecloud.cn/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {ecloud_api_key}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": ecloud_model,
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant designed to output JSON. Your response must be a valid, parseable JSON object with no additional text, markdown formatting, or explanation."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "chat_template_kwargs": {
+            "enable_thinking": False
+        },
+        "max_tokens": 4096,
+        "stream": False,
+        "temperature": 0
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+
+        # Parse the JSON response
+        response_data = response.json()
+        response_content = json.loads(response_data['choices'][0]['message']['content'])
+        return response_content
+
+    except json.JSONDecodeError as e:
+        # Handle JSON parsing errors
+        st.error(f"Failed to parse JSON response from eCloud: {str(e)}")
+
+        # Create a fallback response
+        fallback_response = {
+            "threat_model": [
+                {
+                    "Threat Type": "Error",
+                    "Scenario": "Failed to parse eCloud response",
+                    "Potential Impact": "Unable to generate threat model"
+                }
+            ],
+            "improvement_suggestions": [
+                "Try again - sometimes the model returns a properly formatted response on subsequent attempts",
+                "Check if the model supports JSON output format",
+                "Consider simplifying the input prompt"
+            ]
+        }
+        return fallback_response
+
+    except Exception as e:
+        # Handle API errors
+        error_message = str(e)
+        st.error(f"Error with eCloud API: {error_message}")
+
+        # Create a fallback response for API errors
+        fallback_response = {
+            "threat_model": [
+                {
+                    "Threat Type": "Error",
+                    "Scenario": f"API Error: {error_message}",
+                    "Potential Impact": "Unable to generate threat model"
+                }
+            ],
+            "improvement_suggestions": [
+                "Check your API key and model name",
+                "Verify the eCloud API service is available",
+                "Consider using a different model if the issue persists"
+            ]
+        }
+        return fallback_response

@@ -395,3 +395,53 @@ def get_mitigations_glm(glm_api_key, glm_model, prompt, language="en"):
     except Exception as e:
         st.error(f"Error generating mitigations with GLM: {str(e)}")
         return "Error generating mitigations. Please check your API key and try again."
+
+# Function to get mitigations from eCloud response
+def get_mitigations_ecloud(ecloud_api_key, ecloud_model, prompt, language="en"):
+    """
+    Get mitigations from eCloud response.
+
+    Args:
+        ecloud_api_key (str): The eCloud API key
+        ecloud_model (str): The eCloud model name
+        prompt (str): The prompt to send to the model
+
+    Returns:
+        str: Markdown formatted mitigations
+    """
+    import requests
+
+    url = "https://zhenze-huhehaote.cmecloud.cn/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {ecloud_api_key}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": ecloud_model,
+        "messages": [
+            {"role": "system", "content": "You are a cybersecurity expert with extensive experience in threat modeling and mitigation strategies. Provide detailed, actionable security controls and mitigations."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 4000,
+        "stream": False,
+        "chat_template_kwargs": {
+            "enable_thinking": False
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=60)
+        response.raise_for_status()
+
+        result = response.json()
+        return result['choices'][0]['message']['content']
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error generating mitigations with eCloud: {str(e)}")
+        return "Error generating mitigations. Please check your API key and try again."
+    except Exception as e:
+        st.error(f"Unexpected error with eCloud: {str(e)}")
+        return "Error generating mitigations. An unexpected error occurred."

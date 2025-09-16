@@ -1,0 +1,659 @@
+/* GitHub Dark Mode Theme for STRIDE GPT */
+
+/* Global CSS reset to override Streamlit defaults */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* Force override all colors to GitHub dark mode palette */
+:root {
+    --primary-color: #1f6feb !important;
+    --secondary-color: #58a6ff !important;
+    --background-color: #0d1117 !important;
+    --surface-color: #161b22 !important;
+    --border-color: #30363d !important;
+    --text-color: #c9d1d9 !important;
+    --text-secondary: #8b949e !important;
+    --accent-color: #1f6feb !important;
+    --hover-color: #30363d !important;
+    --success-color: #3fb950 !important;
+    --warning-color: #d29922 !important;
+    --error-color: #f85149 !important;
+    --streamlit-primary-color: #1f6feb !important;
+    --streamlit-secondary-color: #58a6ff !important;
+}
+
+/* Main background and primary colors - GitHub dark mode */
+.stApp {
+    background: #0d1117 !important;
+    color: #c9d1d9 !important;
+    min-height: 100vh;
+}
+
+/* Body background - GitHub dark mode */
+body {
+    background: #0d1117 !important;
+    color: #c9d1d9 !important;
+}
+
+/* Remove any default Streamlit theme colors */
+.stApp * {
+    border-color: #30363d !important;
+    background-color: transparent !important;
+}
+
+/* Override specific elements - GitHub dark mode */
+[data-testid="stToolbar"] {
+    background: #161b22 !important;
+    border-bottom: 1px solid #30363d !important;
+}
+
+/* Force override any remaining colored backgrounds */
+div[style*="background: rgb"] {
+    background: transparent !important;
+}
+
+div[style*="background-color"] {
+    background-color: transparent !important;
+}
+
+button[style*="background"] {
+    background: #238636 !important;
+}
+
+/* Comprehensive color override - GitHub dark mode */
+*[style*="#FF4B4B"],
+*[style*="#ff4b4b"],
+*[style*="rgb(255, 75, 75)"],
+*[style*="rgb(0, 123, 255)"],
+*[style*="#007BFF"],
+*[style*="#1f77b4"],
+*[style*="#ff7f0e"],
+*[style*="#2ca02c"],
+*[style*="#d62728"],
+*[style*="#9467bd"],
+*[style*="#8c564b"],
+*[style*="#e377c2"],
+*[style*="#7f7f7f"],
+*[style*="#bcbd22"],
+*[style*="#17becf"] {
+    background-color: #161b22 !important;
+    color: #c9d1d9 !important;
+    border-color: #30363d !important;
+}
+
+/* Override any inline styles with blue colors */
+div[style*="background-color"],
+div[style*="background:"],
+span[style*="background-color"],
+span[style*="background:"],
+button[style*="background-color"],
+button[style*="background:"] {
+    background-color: transparent !important;
+    background: linear-gradient(45deg, #8b5cf6, #a78bfa) !important;
+}
+
+/* Special handling for streamlit's default blue */
+.streamlit-button {
+    background: linear-gradient(45deg, #8b5cf6, #a78bfa) !important;
+    border: none !important;
+    color: white !important;
+}
+
+/* Body background */
+body {
+    background: linear-gradient(135deg, #000000 0%, #0f0f1e 25%, #1a1a2e 50%, #16213e 75%, #0d1117 100%);
+    color: #e0e0e0;
+}
+
+/* Sidebar styling - GitHub dark mode */
+[data-testid="stSidebar"] {
+    background: #161b22 !important;
+    border-right: 1px solid #30363d !important;
+    box-shadow: none !important;
+}
+
+[data-testid="stSidebar"] > div:first-child {
+    background: transparent !important;
+}
+
+/* Override all sidebar content */
+[data-testid="stSidebar"] div,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] h4,
+[data-testid="stSidebar"] h5,
+[data-testid="stSidebar"] h6 {
+    color: #c9d1d9 !important;
+    background: transparent !important;
+}
+
+/* Force remove any colors from sidebar - GitHub dark mode */
+[data-testid="stSidebar"] div[style*="rgb"],
+[data-testid="stSidebar"] div[style*="background"],
+[data-testid="stSidebar"] span[style*="rgb"],
+[data-testid="stSidebar"] span[style*="background"],
+[data-testid="stSidebar"] p[style*="rgb"],
+[data-testid="stSidebar"] p[style*="background"] {
+    background: transparent !important;
+    color: #c9d1d9 !important;
+}
+
+/* Override any remaining backgrounds in sidebar */
+[data-testid="stSidebar"] .stSelectbox,
+[data-testid="stSidebar"] .stTextInput,
+[data-testid="stSidebar"] .stTextArea,
+[data-testid="stSidebar"] .stNumberInput {
+    background: #0d1117 !important;
+    border: 1px solid #30363d !important;
+    color: #c9d1d9 !important;
+    border-radius: 6px !important;
+}
+
+/* Sidebar input styling - GitHub dark mode */
+[data-testid="stSidebar"] input,
+[data-testid="stSidebar"] textarea,
+[data-testid="stSidebar"] select {
+    background: #0d1117 !important;
+    border: 1px solid #30363d !important;
+    color: #c9d1d9 !important;
+    border-radius: 6px !important;
+}
+
+/* Sidebar content elements - GitHub dark mode */
+[data-testid="stSidebar"] .stNumberInput,
+[data-testid="stSidebar"] .stTextInput,
+[data-testid="stSidebar"] .stSelectbox,
+[data-testid="stSidebar"] .stTextArea {
+    background: #0d1117 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+    transition: all 0.2s ease !important;
+}
+
+[data-testid="stSidebar"] .stNumberInput:hover,
+[data-testid="stSidebar"] .stTextInput:hover,
+[data-testid="stSidebar"] .stSelectbox:hover,
+[data-testid="stSidebar"] .stTextArea:hover {
+    background: #161b22 !important;
+    border-color: #58a6ff !important;
+}
+
+/* Header/Top bar styling - GitHub dark mode */
+header[data-testid="stHeader"] {
+    background: #161b22 !important;
+    border-bottom: 1px solid #30363d !important;
+    box-shadow: none !important;
+}
+
+/* Remove any default styling - GitHub dark mode */
+[data-testid="stHeader"] *,
+[data-testid="stHeader"] div,
+[data-testid="stHeader"] span,
+[data-testid="stHeader"] button,
+[data-testid="stHeader"] a,
+[data-testid="stHeader"] p,
+[data-testid="stHeader"] h1,
+[data-testid="stHeader"] h2,
+[data-testid="stHeader"] h3,
+[data-testid="stHeader"] h4,
+[data-testid="stHeader"] h5,
+[data-testid="stHeader"] h6 {
+    color: #c9d1d9 !important;
+    background: transparent !important;
+    border-color: #30363d !important;
+}
+
+/* Force override any elements in header */
+[data-testid="stHeader"] div[style*="rgb"],
+[data-testid="stHeader"] div[style*="background"],
+[data-testid="stHeader"] span[style*="rgb"],
+[data-testid="stHeader"] span[style*="background"] {
+    background: transparent !important;
+    color: #c9d1d9 !important;
+}
+
+/* Additional header overrides */
+[data-testid="stHeader"] .stButton,
+[data-testid="stHeader"] .stSelectbox,
+[data-testid="stHeader"] .stTextInput {
+    background: #0d1117 !important;
+    border: 1px solid #30363d !important;
+    color: #c9d1d9 !important;
+}
+
+/* Streamlit default elements override - GitHub dark mode */
+.element-container .stSelectbox div[data-baseweb="select"] > div {
+    background: #0d1117 !important;
+    border: 1px solid #30363d !important;
+    color: #c9d1d9 !important;
+}
+
+.element-container .stSelectbox div[data-baseweb="select"] > div:hover {
+    border-color: #58a6ff !important;
+}
+
+/* Override all colors in Streamlit */
+div[data-testid="stDecoration"] {
+    background: #1f6feb !important;
+}
+
+/* Button base styling override - GitHub dark mode */
+div[data-testid="stButton"] > button {
+    background: #238636 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 8px 16px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+div[data-testid="stButton"] > button:hover {
+    background: #2ea043 !important;
+    border-color: #238636 !important;
+}
+
+/* Tab styling override - GitHub dark mode */
+button[data-baseweb="tab"] {
+    background: #0d1117 !important;
+    color: #c9d1d9 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    background: #1f6feb !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+/* Expandable sections - GitHub dark mode */
+details[open] summary {
+    background: #161b22 !important;
+    color: #58a6ff !important;
+    border: 1px solid #30363d !important;
+}
+
+summary {
+    background: #161b22 !important;
+    color: #58a6ff !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+}
+
+/* Radio and checkbox styling - GitHub dark mode */
+.stRadio > div {
+    background: transparent !important;
+}
+
+.stRadio > div > label > div[data-baseweb="radio"] > div {
+    background: #0d1117 !important;
+    border-color: #30363d !important;
+}
+
+.stRadio > div > label > div[data-baseweb="radio"][aria-selected="true"] > div {
+    background: #1f6feb !important;
+    border-color: #58a6ff !important;
+}
+
+/* Remove all default borders and backgrounds */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: #30363d !important;
+}
+
+/* Headers and titles - GitHub dark mode */
+h1, h2, h3, h4, h5, h6 {
+    color: #c9d1d9 !important;
+    font-weight: 600 !important;
+}
+
+h1 {
+    border-bottom: 1px solid #30363d !important;
+    padding-bottom: 10px !important;
+}
+
+/* Buttons - GitHub dark mode */
+.stButton button {
+    background: #238636 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 8px 16px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+.stButton button:hover {
+    background: #2ea043 !important;
+    border-color: #238636 !important;
+}
+
+.stButton button:active {
+    background: #238636 !important;
+    transform: translateY(0) !important;
+}
+
+/* Input fields and text areas - GitHub dark mode */
+.stTextInput input, .stTextArea textarea, .stSelectbox select {
+    background: #0d1117 !important;
+    border: 1px solid #30363d !important;
+    color: #c9d1d9 !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    transition: all 0.2s ease !important;
+}
+
+.stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox select:focus {
+    border-color: #58a6ff !important;
+    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.3) !important;
+    outline: none !important;
+}
+
+.stTextInput input:hover, .stTextArea textarea:hover, .stSelectbox select:hover {
+    border-color: #58a6ff !important;
+}
+
+/* Cards and containers - GitHub dark mode */
+div[data-testid="stVerticalBlock"] > div[style*="flex-direction: column"] {
+    background: #161b22 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+    padding: 16px !important;
+    margin: 10px 0 !important;
+}
+
+/* Expander elements - GitHub dark mode */
+details {
+    background: #161b22 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+    margin: 10px 0 !important;
+}
+
+details summary {
+    background: #161b22 !important;
+    color: #58a6ff !important;
+    padding: 10px 15px !important;
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    border: 1px solid #30363d !important;
+}
+
+/* Progress bars - GitHub dark mode */
+.stProgress > div > div > div {
+    background: #238636 !important;
+    border-radius: 6px !important;
+}
+
+/* Tabs - GitHub dark mode */
+.stTabs [data-testid="stHorizontalBlock"] {
+    background: #161b22 !important;
+    border-radius: 6px !important;
+    padding: 5px !important;
+    border: 1px solid #30363d !important;
+}
+
+.stTab {
+    background: #0d1117 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+    color: #c9d1d9 !important;
+}
+
+.stTab[data-selected="true"] {
+    background: #1f6feb !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+/* Success messages - GitHub dark mode */
+div[data-testid="stToast"] {
+    background: #1f6feb !important;
+    border: 1px solid #58a6ff !important;
+    border-radius: 6px !important;
+    color: #ffffff !important;
+}
+
+/* Error messages - GitHub dark mode */
+div[data-testid="stException"] {
+    background: #490202 !important;
+    border: 1px solid #f85149 !important;
+    border-radius: 6px !important;
+    color: #f85149 !important;
+}
+
+/* Warning messages - GitHub dark mode */
+div[data-testid="stWarning"] {
+    background: #4e3802 !important;
+    border: 1px solid #d29922 !important;
+    border-radius: 6px !important;
+    color: #d29922 !important;
+}
+
+/* Info messages - GitHub dark mode */
+div[data-testid="stInfo"] {
+    background: #0c2d6b !important;
+    border: 1px solid #58a6ff !important;
+    border-radius: 6px !important;
+    color: #58a6ff !important;
+}
+
+/* Table styling - GitHub dark mode */
+.dataframe {
+    background: #0d1117 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+    color: #c9d1d9 !important;
+}
+
+.dataframe th {
+    background: #161b22 !important;
+    color: #c9d1d9 !important;
+    padding: 10px !important;
+    border-bottom: 1px solid #30363d !important;
+}
+
+.dataframe td {
+    border-bottom: 1px solid #30363d !important;
+    padding: 8px !important;
+    color: #c9d1d9 !important;
+}
+
+/* Markdown content - GitHub dark mode */
+.markdown-text {
+    color: #c9d1d9 !important;
+}
+
+.markdown-text code {
+    background: #161b22 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    color: #58a6ff !important;
+}
+
+/* Scrollbar styling - GitHub dark mode */
+::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+::-webkit-scrollbar-track {
+    background: #161b22 !important;
+    border-radius: 4px !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #30363d !important;
+    border-radius: 4px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #58a6ff !important;
+}
+
+/* Sidebar elements - GitHub dark mode */
+.css-1lcbmzc {
+    background: #0d1117 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+    margin: 5px 0 !important;
+}
+
+/* Divider lines - GitHub dark mode */
+hr {
+    border: none !important;
+    height: 1px !important;
+    background: #30363d !important;
+    margin: 30px 0 !important;
+    border-radius: 1px !important;
+}
+
+/* Metric containers - GitHub dark mode */
+div[data-testid="metric-container"] {
+    background: #161b22 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+    padding: 15px !important;
+    color: #c9d1d9 !important;
+}
+
+/* Custom hover effects */
+.stButton button:hover, .stTab:hover {
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+/* Loading spinners */
+.stSpinner {
+    border-color: #8b5cf6;
+    border-top-color: transparent;
+}
+
+/* Code blocks */
+.stCode {
+    background: rgba(15, 15, 35, 0.9);
+    border: 1px solid #8b5cf6;
+    border-radius: 8px;
+    color: #a78bfa;
+}
+
+/* File uploader */
+.stFileUploader {
+    background: rgba(26, 26, 46, 0.6);
+    border: 2px dashed #8b5cf6;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.stFileUploader:hover {
+    border-color: #a78bfa;
+    background: rgba(139, 92, 246, 0.1);
+}
+
+/* Checkbox and radio buttons */
+.stCheckbox label, .stRadio label {
+    color: #e0e0e0;
+}
+
+.stCheckbox input[type="checkbox"]:checked + span,
+.stRadio input[type="radio"]:checked + span {
+    color: #a78bfa;
+}
+
+/* Slider elements */
+.stSlider > div > div > div {
+    background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+}
+
+/* Custom animations */
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+}
+
+.pulse-effect {
+    animation: pulse 2s infinite;
+}
+
+/* Floating animation for important elements */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.floating {
+    animation: float 4s ease-in-out infinite;
+}
+
+/* Glow effect */
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 5px rgba(139, 92, 246, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.8), 0 0 30px rgba(167, 139, 250, 0.4); }
+}
+
+.glow-effect {
+    animation: glow 2s ease-in-out infinite;
+}
+
+/* Final comprehensive color override - catch-all for any remaining colored elements */
+*[style*="background-color: rgb(0, 0, 255)"],
+*[style*="background-color: rgb(0, 123, 255)"],
+*[style*="background-color: rgb(30, 144, 255)"],
+*[style*="background: rgb(0, 0, 255)"],
+*[style*="background: rgb(0, 123, 255)"],
+*[style*="background: rgb(30, 144, 255)"],
+*[style*="color: rgb(0, 0, 255)"],
+*[style*="color: rgb(0, 123, 255)"],
+*[style*="color: rgb(30, 144, 255)"],
+*[style*="border-color: rgb(0, 0, 255)"],
+*[style*="border-color: rgb(0, 123, 255)"],
+*[style*="border-color: rgb(30, 144, 255)"] {
+    background-color: #0d1117 !important;
+    color: #c9d1d9 !important;
+    border-color: #30363d !important;
+}
+
+/* Additional comprehensive overrides for stubborn elements - GitHub dark mode */
+.css-1d391kg,
+.css-1avcm0n,
+.css-1kyxreq,
+.css-1v0mbdj,
+.css-1c0yj1j,
+.css-1vqwwp2,
+.css-1u4v8r5,
+.css-1kyxreq,
+.css-1d391kg,
+.css-1avcm0n,
+.css-1kyxreq,
+.css-1v0mbdj,
+.css-1c0yj1j,
+.css-1vqwwp2,
+.css-1u4v8r5 {
+    background: #0d1117 !important;
+    color: #c9d1d9 !important;
+    border-color: #30363d !important;
+}
+
+/* Special card effect - GitHub dark mode */
+.enhanced-card {
+    background: #161b22 !important;
+    border: 1px solid #30363d !important;
+    border-radius: 6px !important;
+    padding: 20px !important;
+    margin: 15px 0 !important;
+    transition: all 0.2s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.enhanced-card:hover {
+    border-color: #58a6ff !important;
+    box-shadow: 0 4px 12px rgba(31, 111, 235, 0.2) !important;
+    transform: translateY(-2px) !important;
+}

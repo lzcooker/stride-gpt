@@ -25,6 +25,7 @@ from threat_model import (
     get_threat_model_lm_studio,
     get_threat_model_groq,
     get_threat_model_glm,
+    get_threat_model_ecloud,
     json_to_markdown,
     get_image_analysis,
     get_image_analysis_azure,
@@ -33,10 +34,10 @@ from threat_model import (
     get_image_analysis_glm,
     create_image_analysis_prompt,
 )
-from attack_tree import create_attack_tree_prompt, get_attack_tree, get_attack_tree_azure, get_attack_tree_mistral, get_attack_tree_ollama, get_attack_tree_anthropic, get_attack_tree_lm_studio, get_attack_tree_groq, get_attack_tree_google, get_attack_tree_glm
-from mitigations import create_mitigations_prompt, get_mitigations, get_mitigations_azure, get_mitigations_google, get_mitigations_mistral, get_mitigations_ollama, get_mitigations_anthropic, get_mitigations_lm_studio, get_mitigations_groq, get_mitigations_glm
-from test_cases import create_test_cases_prompt, get_test_cases, get_test_cases_azure, get_test_cases_google, get_test_cases_mistral, get_test_cases_ollama, get_test_cases_anthropic, get_test_cases_lm_studio, get_test_cases_groq, get_test_cases_glm
-from dread import create_dread_assessment_prompt, get_dread_assessment, get_dread_assessment_azure, get_dread_assessment_google, get_dread_assessment_mistral, get_dread_assessment_ollama, get_dread_assessment_anthropic, get_dread_assessment_lm_studio, get_dread_assessment_groq, get_dread_assessment_glm, dread_json_to_markdown
+from attack_tree import create_attack_tree_prompt, get_attack_tree, get_attack_tree_azure, get_attack_tree_mistral, get_attack_tree_ollama, get_attack_tree_anthropic, get_attack_tree_lm_studio, get_attack_tree_groq, get_attack_tree_google, get_attack_tree_glm, get_attack_tree_ecloud
+from mitigations import create_mitigations_prompt, get_mitigations, get_mitigations_azure, get_mitigations_google, get_mitigations_mistral, get_mitigations_ollama, get_mitigations_anthropic, get_mitigations_lm_studio, get_mitigations_groq, get_mitigations_glm, get_mitigations_ecloud
+from test_cases import create_test_cases_prompt, get_test_cases, get_test_cases_azure, get_test_cases_google, get_test_cases_mistral, get_test_cases_ollama, get_test_cases_anthropic, get_test_cases_lm_studio, get_test_cases_groq, get_test_cases_glm, get_test_cases_ecloud
+from dread import create_dread_assessment_prompt, get_dread_assessment, get_dread_assessment_azure, get_dread_assessment_google, get_dread_assessment_mistral, get_dread_assessment_ollama, get_dread_assessment_anthropic, get_dread_assessment_lm_studio, get_dread_assessment_groq, get_dread_assessment_glm, get_dread_assessment_ecloud, dread_json_to_markdown
 
 # ------------------ Helper Functions ------------------ #
 
@@ -362,6 +363,10 @@ def analyze_gerrit_repo(repo_url):
         gerrit_host = parsed_url.netloc
         repo_path = parsed_url.path.strip('/')
 
+        # Basic URL validation
+        if not gerrit_host or not repo_path:
+            raise ValueError("无效的Gerrit URL格式")
+
         # Extract project name (remove /a/ prefix if present for anonymous access)
         if repo_path.startswith('a/'):
             repo_path = repo_path[2:]
@@ -380,7 +385,7 @@ def analyze_gerrit_repo(repo_url):
 
         # Get project information
         headers = {'Accept': 'application/json'}
-        response = requests.get(gerrit_api_url, auth=auth, headers=headers)
+        response = requests.get(gerrit_api_url, auth=auth, headers=headers, timeout=30)
 
         # Gerrit returns JSON with a magic prefix, remove it
         if response.status_code == 200:
@@ -421,7 +426,7 @@ def analyze_gerrit_repo(repo_url):
         try:
             # Try to get files from the repository
             files_api_url = f"https://{gerrit_host}/projects/{repo_path}/files/?recursive&limit=100"
-            files_response = requests.get(files_api_url, auth=auth, headers=headers)
+            files_response = requests.get(files_api_url, auth=auth, headers=headers, timeout=30)
 
             if files_response.status_code == 200:
                 files_content = files_response.text
@@ -432,8 +437,9 @@ def analyze_gerrit_repo(repo_url):
                 # Look for README files
                 for file_path in files_data:
                     if 'README' in file_path.upper():
+                        print(f"Found README file: {file_path}")
                         file_api_url = f"https://{gerrit_host}/projects/{repo_path}/files/{file_path}/content"
-                        file_response = requests.get(file_api_url, auth=auth, headers=headers)
+                        file_response = requests.get(file_api_url, auth=auth, headers=headers, timeout=30)
 
                         if file_response.status_code == 200:
                             file_content_b64 = file_response.text
@@ -493,7 +499,7 @@ def analyze_gerrit_repo(repo_url):
 
                     try:
                         file_api_url = f"https://{gerrit_host}/projects/{repo_path}/files/{file_path}/content"
-                        file_response = requests.get(file_api_url, auth=auth, headers=headers)
+                        file_response = requests.get(file_api_url, auth=auth, headers=headers, timeout=30)
 
                         if file_response.status_code == 200:
                             file_content_b64 = file_response.text
@@ -549,10 +555,29 @@ def analyze_gerrit_repo(repo_url):
 
         return system_description
 
-    except Exception as e:
-        error_msg = f"Error analyzing Gerrit repository: {str(e)}"
+    except requests.exceptions.Timeout:
+        error_msg = "连接Gerrit服务器超时。请检查网络连接或服务器状态。"
         st.error(error_msg)
-        return f"Error: Could not analyze Gerrit repository. Please check the URL and your credentials. {error_msg}"
+        return f"错误: {error_msg}"
+    except requests.exceptions.ConnectionError:
+        error_msg = "无法连接到Gerrit服务器。请检查URL和网络连接。"
+        st.error(error_msg)
+        return f"错误: {error_msg}"
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            error_msg = "Gerrit认证失败。请检查用户名和密码。"
+        elif e.response.status_code == 403:
+            error_msg = "Gerrit访问被拒绝。请检查权限设置。"
+        elif e.response.status_code == 404:
+            error_msg = "Gerrit项目不存在。请检查项目路径。"
+        else:
+            error_msg = f"Gerrit HTTP错误: {e.response.status_code}"
+        st.error(error_msg)
+        return f"错误: {error_msg}"
+    except Exception as e:
+        error_msg = f"分析Gerrit仓库时出错: {str(e)}"
+        st.error(error_msg)
+        return f"错误: {error_msg}"
 
 def summarize_file(file_path, content):
     """
@@ -788,6 +813,10 @@ def load_env_variables():
     if glm_api_key:
         st.session_state['glm_api_key'] = glm_api_key
 
+    ecloud_api_key = os.getenv('ECLOUD_API_KEY')
+    if ecloud_api_key:
+        st.session_state['ecloud_api_key'] = ecloud_api_key
+
     # Add Ollama endpoint configuration
     ollama_endpoint = os.getenv('OLLAMA_ENDPOINT', 'http://localhost:11434')
     st.session_state['ollama_endpoint'] = ollama_endpoint
@@ -840,6 +869,9 @@ model_token_limits = {
     # GLM models
     "GLM API:glm-4.5": {"default": 64000, "max": 128000},
     "GLM API:glm-4.5-air": {"default": 64000, "max": 128000},
+
+    # eCloud models
+    "eCloud:deepseek-v3": {"default": 64000, "max": 128000},
    
     
     # Azure models - conservative defaults
@@ -856,6 +888,14 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# Load custom CSS for black and purple theme
+def load_css():
+    with open("style.css", "r", encoding="utf-8") as f:
+        css = f.read()
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+load_css()
 
 # Initialize session state for language
 if "language" not in st.session_state:
@@ -902,6 +942,8 @@ def on_model_provider_change():
         st.session_state.selected_model = "llama-3.3-70b-versatile"
     elif new_provider == "GLM API":
         st.session_state.selected_model = "glm-4.5"
+    elif new_provider == "eCloud":
+        st.session_state.selected_model = "deepseek-v3"
     # For Ollama and LM Studio, we don't set a default as they depend on locally available models
 
 # Define callback for model selection change
@@ -954,7 +996,7 @@ with st.sidebar:
     # Add model selection input field to the sidebar
     model_provider = st.selectbox(
         get_text("model_provider_label", st.session_state.language),
-        ["GLM API", "OpenAI API", "Anthropic API", "Azure OpenAI Service", "Google AI API", "Mistral API", "Groq API", "Ollama", "LM Studio Server"],
+        ["GLM API", "eCloud", "OpenAI API", "Anthropic API", "Azure OpenAI Service", "Google AI API", "Mistral API", "Groq API", "Ollama", "LM Studio Server"],
         key="model_provider",
         on_change=on_model_provider_change,
         help=get_text("model_provider_help", st.session_state.language),
@@ -1213,6 +1255,31 @@ with st.sidebar:
             help=get_text("glm_model_help", st.session_state.language)
         )
 
+    if model_provider == "eCloud":
+        st.markdown(
+        get_text("step_enter_api_key", st.session_state.language).format("eCloud") + "\n" +
+        get_text("step_provide_details", st.session_state.language) + "\n" +
+        get_text("step_generate_output", st.session_state.language)
+    )
+        # Add eCloud API key input field to the sidebar
+        ecloud_api_key = st.text_input(
+            get_text("ecloud_api_key_label", st.session_state.language),
+            value=st.session_state.get('ecloud_api_key', ''),
+            type="password",
+            help=get_text("ecloud_api_key_help", st.session_state.language),
+        )
+        if ecloud_api_key:
+            st.session_state['ecloud_api_key'] = ecloud_api_key
+
+        # Add model selection input field to the sidebar
+        ecloud_model = st.selectbox(
+            get_text("model_selection_label", st.session_state.language),
+            ["deepseek-v3"],
+            key="selected_model",
+            on_change=on_model_selection_change,
+            help=get_text("ecloud_model_help", st.session_state.language)
+        )
+
     # Add GitHub API key input field to the sidebar
     github_api_key = st.text_input(
         get_text("github_api_key_label", st.session_state.language),
@@ -1326,10 +1393,7 @@ with st.sidebar:
         get_text("about_description", st.session_state.language)
     )
     st.markdown(get_text("about_created_by", st.session_state.language))
-    # Add "Star on GitHub" link to the sidebar
-    st.markdown(
-        "⭐ Star on GitHub: [![Star on GitHub](https://img.shields.io/github/stars/mrwadams/stride-gpt?style=social)](https://github.com/mrwadams/stride-gpt)"
-    )
+    
     st.markdown("""---""")
 
 
@@ -1363,6 +1427,24 @@ with st.sidebar:
 
 # ------------------ Main App UI ------------------ #
 
+# Simple header
+st.markdown("""
+<div style="
+    padding: 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+">
+    <h1 style="
+        color: #c9d1d9;
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 600;
+    ">
+        🛡️ STRIDE GPT
+    </h1>
+</div>
+""", unsafe_allow_html=True)
+
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     get_text("threat_model_header", st.session_state.language),
     get_text("attack_tree_header", st.session_state.language),
@@ -1372,7 +1454,12 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 with tab1:
-    st.markdown(get_text("threat_model_description", st.session_state.language))
+    st.markdown(f"""
+    <div class="enhanced-card">
+        <h2>{get_text("threat_model_header", st.session_state.language)}</h2>
+        <p>{get_text("threat_model_description", st.session_state.language)}</p>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("""---""")
     
     # Two column layout for the main app content
@@ -1561,6 +1648,8 @@ with tab1:
                         model_output = get_threat_model_groq(groq_api_key, groq_model, threat_model_prompt)
                     elif model_provider == "GLM API":
                         model_output = get_threat_model_glm(glm_api_key, glm_model, threat_model_prompt)
+                    elif model_provider == "eCloud":
+                        model_output = get_threat_model_ecloud(ecloud_api_key, ecloud_model, threat_model_prompt)
 
                     # Access the threat model and improvement suggestions from the parsed content
                     threat_model = model_output.get("threat_model", [])
@@ -1579,7 +1668,7 @@ with tab1:
                         st.warning(get_text("retrying_threat_model", st.session_state.language).format(retry_count+1, max_retries))
 
         # Convert the threat model JSON to Markdown
-        markdown_output = json_to_markdown(threat_model, improvement_suggestions)
+        markdown_output = json_to_markdown(threat_model, improvement_suggestions, st.session_state.language)
 
         # Display thinking content in an expander if available
         if ('last_thinking_content' in st.session_state and 
@@ -1610,7 +1699,12 @@ if threat_model_submit_button and not st.session_state.get('app_input'):
 # ------------------ Attack Tree Generation ------------------ #
 
 with tab2:
-    st.markdown(get_text("attack_tree_description", st.session_state.language))
+    st.markdown(f"""
+    <div class="enhanced-card">
+        <h2>{get_text("attack_tree_header", st.session_state.language)}</h2>
+        <p>{get_text("attack_tree_description", st.session_state.language)}</p>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("""---""")
     if model_provider == "Mistral API" and mistral_model == "mistral-small-latest":
         st.warning(get_text("mistral_small_warning", st.session_state.language))
@@ -1653,6 +1747,8 @@ with tab2:
                         mermaid_code = get_attack_tree_groq(groq_api_key, groq_model, attack_tree_prompt, st.session_state.language)
                     elif model_provider == "GLM API":
                         mermaid_code = get_attack_tree_glm(glm_api_key, glm_model, attack_tree_prompt, st.session_state.language)
+                    elif model_provider == "eCloud":
+                        mermaid_code = get_attack_tree_ecloud(ecloud_api_key, ecloud_model, attack_tree_prompt, st.session_state.language)
 
                     # Display thinking content in an expander if available
                     if ('last_thinking_content' in st.session_state and 
@@ -1706,7 +1802,12 @@ with tab2:
 # ------------------ Mitigations Generation ------------------ #
 
 with tab3:
-    st.markdown(get_text("mitigations_description", st.session_state.language))
+    st.markdown(f"""
+    <div class="enhanced-card">
+        <h2>{get_text("mitigations_header", st.session_state.language)}</h2>
+        <p>{get_text("mitigations_description", st.session_state.language)}</p>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("""---""")
     
     # Create a submit button for Mitigations
@@ -1717,7 +1818,7 @@ with tab3:
         # Check if threat_model data exists
         if 'threat_model' in st.session_state and st.session_state['threat_model']:
             # Convert the threat_model data into a Markdown list
-            threats_markdown = json_to_markdown(st.session_state['threat_model'], [])
+            threats_markdown = json_to_markdown(st.session_state['threat_model'], [], st.session_state.language)
             # Generate the prompt using the create_mitigations_prompt function
             mitigations_prompt = create_mitigations_prompt(threats_markdown, st.session_state.language)
 
@@ -1750,6 +1851,8 @@ with tab3:
                             mitigations_markdown = get_mitigations_groq(groq_api_key, groq_model, mitigations_prompt, st.session_state.language)
                         elif model_provider == "GLM API":
                             mitigations_markdown = get_mitigations_glm(glm_api_key, glm_model, mitigations_prompt, st.session_state.language)
+                        elif model_provider == "eCloud":
+                            mitigations_markdown = get_mitigations_ecloud(ecloud_api_key, ecloud_model, mitigations_prompt, st.session_state.language)
 
                         # Display thinking content in an expander if available and using a model with thinking capabilities
                         if ('last_thinking_content' in st.session_state and 
@@ -1788,7 +1891,12 @@ with tab3:
 
 # ------------------ DREAD Risk Assessment Generation ------------------ #
 with tab4:
-    st.markdown(get_text("dread_description", st.session_state.language))
+    st.markdown(f"""
+    <div class="enhanced-card">
+        <h2>{get_text("dread_header", st.session_state.language)}</h2>
+        <p>{get_text("dread_description", st.session_state.language)}</p>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("""---""")
     
     # Create a submit button for DREAD Risk Assessment
@@ -1798,7 +1906,7 @@ with tab4:
         # Check if threat_model data exists
         if 'threat_model' in st.session_state and st.session_state['threat_model']:
             # Convert the threat_model data into a Markdown list
-            threats_markdown = json_to_markdown(st.session_state['threat_model'], [])
+            threats_markdown = json_to_markdown(st.session_state['threat_model'], [], st.session_state.language)
             # Generate the prompt using the create_dread_assessment_prompt function
             dread_assessment_prompt = create_dread_assessment_prompt(threats_markdown, st.session_state.language)
             # Clear thinking content when switching models or starting a new operation
@@ -1830,6 +1938,8 @@ with tab4:
                             dread_assessment = get_dread_assessment_groq(groq_api_key, groq_model, dread_assessment_prompt, st.session_state.language)
                         elif model_provider == "GLM API":
                             dread_assessment = get_dread_assessment_glm(glm_api_key, glm_model, dread_assessment_prompt, st.session_state.language)
+                        elif model_provider == "eCloud":
+                            dread_assessment = get_dread_assessment_ecloud(ecloud_api_key, ecloud_model, dread_assessment_prompt, st.session_state.language)
                         
                         # Save the DREAD assessment to the session state for later use in test cases
                         st.session_state['dread_assessment'] = dread_assessment
@@ -1880,7 +1990,12 @@ with tab4:
 # ------------------ Test Cases Generation ------------------ #
 
 with tab5:
-    st.markdown(get_text("test_cases_description", st.session_state.language))
+    st.markdown(f"""
+    <div class="enhanced-card">
+        <h2>{get_text("test_cases_header", st.session_state.language)}</h2>
+        <p>{get_text("test_cases_description", st.session_state.language)}</p>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("""---""")
                 
     # Create a submit button for Test Cases
@@ -1891,7 +2006,7 @@ with tab5:
         # Check if threat_model data exists
         if 'threat_model' in st.session_state and st.session_state['threat_model']:
             # Convert the threat_model data into a Markdown list
-            threats_markdown = json_to_markdown(st.session_state['threat_model'], [])
+            threats_markdown = json_to_markdown(st.session_state['threat_model'], [], st.session_state.language)
             # Generate the prompt using the create_test_cases_prompt function
             test_cases_prompt = create_test_cases_prompt(threats_markdown, st.session_state.language)
 
@@ -1924,6 +2039,8 @@ with tab5:
                             test_cases_markdown = get_test_cases_groq(groq_api_key, groq_model, test_cases_prompt, st.session_state.language)
                         elif model_provider == "GLM API":
                             test_cases_markdown = get_test_cases_glm(glm_api_key, glm_model, test_cases_prompt, st.session_state.language)
+                        elif model_provider == "eCloud":
+                            test_cases_markdown = get_test_cases_ecloud(ecloud_api_key, ecloud_model, test_cases_prompt, st.session_state.language)
 
                         # Display thinking content in an expander if available and using a model with thinking capabilities
                         if ('last_thinking_content' in st.session_state and 

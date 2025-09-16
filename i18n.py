@@ -117,7 +117,7 @@ class translations:
         "about_header": "About",
         "about_welcome": "Welcome to STRIDE GPT, an AI-powered tool designed to help teams produce better threat models for their applications.",
         "about_description": "Threat modelling is a key activity in the software development lifecycle, but is often overlooked or poorly executed. STRIDE GPT aims to help teams produce more comprehensive threat models by leveraging the power of Large Language Models (LLMs) to generate a threat list, attack tree and/or mitigating controls for an application based on the details provided.",
-        "about_created_by": "Created by [Matt Adams](https://www.linkedin.com/in/matthewrwadams/).",
+        "about_created_by": "Created by [lzc](https://github.com/lzcooker).",
         "example_app_header": "Example Application Description",
         "example_app_description": "Below is an example application description that you can use to test STRIDE GPT:",
         "faqs_header": "FAQs",
@@ -165,6 +165,11 @@ class translations:
         "glm_api_key_label": "Enter your GLM API key:",
         "glm_api_key_help": "You can get your GLM API key from the [BigModel console](https://open.bigmodel.cn/).",
         "glm_model_help": "GLM-4-Plus is the latest flagship model with enhanced capabilities. GLM-4-Air offers a good balance of performance and cost-effectiveness.",
+
+        # eCloud Section
+        "ecloud_api_key_label": "Enter your eCloud API key:",
+        "ecloud_api_key_help": "You can get your eCloud API key from the eCloud console.",
+        "ecloud_model_help": "DeepSeek-V3 is a powerful language model with strong reasoning capabilities.",
 
         # Error messages
         "lm_studio_connect_error": """Unable to connect to LM Studio Server. Please ensure:
@@ -421,6 +426,11 @@ Please check:
         "glm_api_key_label": "输入您的 GLM API 密钥：",
         "glm_api_key_help": "您可以从 [BigModel 控制台](https://open.bigmodel.cn/) 获取您的 GLM API 密钥。",
         "glm_model_help": "GLM-4-Plus 是具有增强功能的最新旗舰模型。GLM-4-Air 在性能和成本效益之间提供了良好的平衡。",
+
+        # eCloud Section
+        "ecloud_api_key_label": "输入您的 eCloud API 密钥：",
+        "ecloud_api_key_help": "您可以从 eCloud 控制台获取您的 eCloud API 密钥。",
+        "ecloud_model_help": "DeepSeek-V3 是一个功能强大的语言模型，具有强大的推理能力。",
 
         # Error messages
         "lm_studio_connect_error": """无法连接到 LM Studio Server。请确保：

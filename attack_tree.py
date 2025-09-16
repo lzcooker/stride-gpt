@@ -710,3 +710,65 @@ def get_attack_tree_glm(glm_api_key, glm_model, prompt, language="en"):
     except Exception as e:
         st.error(f"Error generating attack tree with GLM: {str(e)}")
         return "graph TD\n    A[\"Error Generating Attack Tree\"] --> B[\"Please try again or check your API key\"]"
+
+# Function to get attack tree from eCloud response
+def get_attack_tree_ecloud(ecloud_api_key, ecloud_model, prompt, language="en"):
+    """
+    Get attack tree from eCloud response.
+
+    Args:
+        ecloud_api_key (str): The eCloud API key
+        ecloud_model (str): The eCloud model name
+        prompt (str): The prompt to send to the model
+
+    Returns:
+        str: Mermaid diagram code
+    """
+    import requests
+
+    url = "https://zhenze-huhehaote.cmecloud.cn/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {ecloud_api_key}",
+        "Content-Type": "application/json"
+    }
+
+    # Use the same JSON structure prompt as other models
+    system_prompt = create_json_structure_prompt(language)
+
+    data = {
+        "model": ecloud_model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 4000,
+        "stream": False,
+        "chat_template_kwargs": {
+            "enable_thinking": False
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=60)
+        response.raise_for_status()
+
+        result = response.json()
+
+        # Parse JSON response
+        try:
+            content = result['choices'][0]['message']['content']
+            tree_data = json.loads(content)
+            return convert_tree_to_mermaid(tree_data)
+        except (json.JSONDecodeError, KeyError) as e:
+            st.error(f"eCloud response parsing error: {e}")
+            # If JSON parsing fails, try to extract Mermaid code directly
+            return extract_mermaid_code(content)
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error generating attack tree with eCloud: {str(e)}")
+        return "graph TD\n    A[\"Error Generating Attack Tree\"] --> B[\"Please try again or check your API key\"]"
+    except Exception as e:
+        st.error(f"Unexpected error with eCloud: {str(e)}")
+        return "graph TD\n    A[\"Error Generating Attack Tree\"] --> B[\"An unexpected error occurred\"]"
